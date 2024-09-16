@@ -1,15 +1,3 @@
-# These are some examples of commonly ignored file patterns.
-# You should customize this list as applicable to your project.
-# Learn more about .gitignore:
-#     https://www.atlassian.com/git/tutorials/saving-changes/gitignore
-
-# Node artifact files
-node_modules/
-dist/
-
-# Compiled Java class files
-*.class
-
 # Compiled Python bytecode
 *.py[cod]
 
@@ -50,3 +38,32 @@ Thumbs.db
 
 # MATLAB Temp Files
 *.asv
+
+# Windows default autosave extension
+*.asv
+
+# OSX / *nix default autosave extension
+*.m~
+
+# Compiled MEX binaries (all platforms)
+*.mex*
+
+# Packaged app and toolbox files
+*.mlappinstall
+*.mltbx
+
+# Generated helpsearch folders
+helpsearch*/
+
+# Simulink code generation folders
+*/slprj/
+*/sccprj/
+
+# Matlab code generation folders
+*/codegen/
+
+# Simulink autosave extension
+*.autosave
+
+# Simulink cache files
+*.slxc
