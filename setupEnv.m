@@ -15,6 +15,13 @@ simPaths = {
 
     % IMU Model
     fullfile('Models', 'IMU')
+
+    % Kinematics
+    fullfile('Models', 'Kinematics')
+
+    %% Controls
+    fullfile('Controls')
+    
 };
 
 simPaths = strjoin(simPaths, ';');

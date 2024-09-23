@@ -46,7 +46,7 @@ ModelData.thrustPolar = thrustPolar;
 ModelData.consts = consts;
 
 %% Mass Flow Rate Curve
-mDotCurve = diff(massPolar, t);
+% mDotCurve = diff(massPolar, t);
 
 if(motorPlots)
     figure('Name', 'Thrust Curve');
