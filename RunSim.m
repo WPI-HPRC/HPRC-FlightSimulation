@@ -1,20 +1,18 @@
-%% WPI High Power Rocket MQP - Flight Simulator
+%% WPI High Power Rocketry Club - Flight Simulation
 % Author: Daniel Pearson (djpearson@wpi.edu)
-% Version: 12.15.2024
+% Version: 1.28.2025
 
 clear variables; close all; clc;
 
 %% Configure constants and model data
 const = setupConstants();
-kins = HPMR_MissileKinematics();
-% kins = HPMR_ModelRocketKinematics();
+kins = HPRC_RocketKinematics();
 
 % Kinematics 
 inds = getMissileInds(); % Control State Indices
 
 % Aerodynamics Model
-AeroModel = initMissileAeroModel();
-% AeroModel = initRocketAeroModel();
+AeroModel = initRocketAeroModel();
 
 % Motor Model
 MotorModel = initMotorModel();
@@ -53,7 +51,7 @@ target_ECEF = lla2ecef(targetLLA);
 
 %% Attitude Initialization
 roll_0 = deg2rad(0);
-pitch_0 = deg2rad(45);
+pitch_0 = deg2rad(85);
 yaw_0 = deg2rad(0);
 
 q_0 = eul2quat(roll_0, pitch_0, yaw_0);
@@ -71,23 +69,6 @@ Vz_E_0 = 1e-2; % [m/s]
 %% Initial Mass
 m_0 = kins.m_0 + MotorModel.emptyWt + MotorModel.propWt;
 
-%% Target Velocity Initialization
-V_NED_m = 482.26; %[m/s]
-psi = 0;
-Vx_target = V_NED_m*sin(psi); % [m/s]
-Vy_target = V_NED_m*cos(psi); % [m/s]
-Vz_target = 0; % [m/s]
-
-R_ET = [
-        -sind(targetLat)*cosd(targetLon), -sind(targetLon), -cosd(targetLat)*cosd(targetLon);
-        -sind(targetLat)*sind(targetLon),  cosd(targetLon), -cosd(targetLat)*sind(targetLon);
-         cosd(targetLat),                                0,                  -sind(targetLat)
-    ];
-
-V_target_NED = [Vx_target; Vy_target; Vz_target];
-
-V_target_ECEF = R_ET*V_target_NED;
-
 %% State Initialization
 x_0 = [
     q_0';
@@ -102,12 +83,6 @@ x_0 = [
 ];
 
 x_t = x_0;
-
-%% Target State Initialization
-x_0_target = [target_ECEF'; V_target_ECEF];
-
-x_t_target = x_0_target;
-x_t_targetCircle = x_t_target;
 
 %% State Data Storage
 t = time.t0;
@@ -133,9 +108,8 @@ options = odeset('RelTol', 1e-6, 'AbsTol', 1e-9);  % Tolerances for ode45
 cmdHist = zeros(4, numTimePts);
 % Initialize buffer and max actuation rate for canards (e.g., 0.1 rad/s)
 stateBuffer = nan(size(x_t, 1), 2);
-prevCanardInput = struct('d1', 0, 'd2', 0, 'd3', 0, 'd4', 0); % Initial canard deflections
 
-%% Fill steady state data for set period of time (Simulate Launcher)
+%% Fill steady state data for set period of time (Simulate Launch Pad)
 steadyStateDuration = 5; % [s]
 numSteadyPts = steadyStateDuration / time.dt;
 
@@ -146,38 +120,18 @@ cmdHist(:, 1:numSteadyPts) = zeros(4, numSteadyPts); % Zero canard deflections
 colNum = numSteadyPts;
 
 while(currLLA(3) >= -5)
+    % Iterate
     colNum = colNum + 1;
 
     % Update buffer with the latest state; shift older states
     stateBuffer(:, 2) = stateBuffer(:, 1);
     stateBuffer(:, 1) = x_t;
 
-    % Attempt to control roll between 4s and 8s
-    if(t >= steadyStateDuration + 4 && t <= steadyStateDuration + 8)
-        rollCmd = deg2rad(35);
-        canardTargetInput = RollController_PID(stateBuffer, rollCmd, 0.4, 0, 0, time.dt);
-        % canardTargetInput = RollPitchYawController_PID(stateBuffer, 0, 0, 0, 0.4, 0, 0, 0.4, 0, 0, 0.4, 0, 0, time.dt);
+    % Wrap dynamic model in anonymous function for ODE solver
+    rocketModelODE = @(t, x_t) RocketDynamicModel(x_t, t, AeroModel, MotorModel, const, kins, inds);
 
-        canardInput = constrainMissileAcutationLimits(x_t, canardTargetInput, prevCanardInput, kins, time);
-
-        % Update the historical command for analysis
-        cmdHist(:,colNum) = [canardInput.d1; canardInput.d2; canardInput.d3; canardInput.d4];
-
-        % Update previous canard input state for next iteration
-        prevCanardInput = canardInput;
-    else
-        % No roll control, reset canards to 0 rad
-        canardInput.d1 = deg2rad(0);
-        canardInput.d2 = deg2rad(0);
-        canardInput.d3 = deg2rad(0);
-        canardInput.d4 = deg2rad(0);
-    end
-
-    % Define the anonymous function for ode45 that captures the inputs
-    missileModelODE = @(t, x_t) MissileDynamicModel(x_t, t, canardInput, AeroModel, MotorModel, const, kins, inds);
-
-    % Call ode45 for a small time step from current t to t + dt
-    [t_out, x_out] = ode45(missileModelODE, [t, t + time.dt], x_t, options);
+    % Call ODE solver for small time step from current t to t + dt
+    [t_out, x_out] = ode45(rocketModelODE, [t, t + time.dt], x_t, options);
 
     % Update time and state variables with the last output from ode45
     t = t_out(end);
@@ -191,7 +145,7 @@ while(currLLA(3) >= -5)
     tRecord(1, colNum) = t;
 
     % Extract Acceleration Readings
-    [~, accel_ecef] = MissileDynamicModel(x_out(end, :)', t, canardInput, AeroModel, MotorModel, const, kins, inds);
+    [~, accel_ecef] = RocketDynamicModel(x_out(end, :)', t, AeroModel, MotorModel, const, kins, inds);
 
     sensorReading = generateIMU_Readings(x_t, accel_ecef, ImuModel, inds, const);
 end
@@ -264,32 +218,3 @@ title("Mission Conops");
 ylabel("Altitude (m)");
 xlabel("Downrange (m)");
 grid on;
-
-%% Canard Command History
-figure('Name', 'Canard Angles');
-plot(tRecord(:), rad2deg(cmdHist));
-title('Canard Actuation');
-ylabel("Actuation (deg)");
-xlabel("Time (s)");
-grid on;
-legend('Canard 1', 'Canard 2', 'Canard 3', 'Canard 4');
-
-% figure('Name', 'Target Position');
-% subplot(3,1,1);
-% plot(tRecord(:), position_target_ECEF(:,1))
-% title("Target Position X Vs. Time");
-% ylabel("Position (m)");
-% xlabel("Time (s)");
-% grid on;
-% subplot(3,1,2);
-% plot(tRecord(:), position_target_ECEF(:,2))
-% title("Target Position Y Vs. Time");
-% ylabel("Position (m)");
-% xlabel("Time (s)");
-% grid on;
-% subplot(3,1,3);
-% plot(tRecord(:), position_target_ECEF(:,3))
-% title("Target Position Z Vs. Time");
-% ylabel("Position (m)");
-% xlabel("Time (s)");
-% grid on;
