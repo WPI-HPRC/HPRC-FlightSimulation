@@ -1,4 +1,4 @@
-#HPRC Flight Simulator
+# HPRC Flight Simulator
 
 ## Setup and Runtime
 1. Run setupEnv()
