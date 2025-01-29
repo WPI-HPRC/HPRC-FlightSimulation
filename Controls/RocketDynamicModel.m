@@ -98,9 +98,9 @@ function [x_dot, accel_ecef] = RocketDynamicModel(x, t, AeroModel, MotorModel, c
     M_damp_z = -AeroModel.damping.Cd_z * q_inf * kins.S * kins.x_cp * x(inds.w_ib_z);
 
     %% Total Moments
-    M_x_b = M_1_x + M_2_x + M_3_x + M_4_x + M_damp_x; % Roll moment with damping
-    M_y_b = M_1_y + M_2_y + M_damp_y; % Pitch moment with damping
-    M_z_b = M_3_z + M_4_z + M_damp_z; % Yaw moment with damping
+    M_x_b = M_damp_x; % Roll moment with damping
+    M_y_b = M_damp_y; % Pitch moment with damping
+    M_z_b = M_damp_z; % Yaw moment with damping
 
     %% Angular Accelerations
     dw_ib_x = M_x_b / kins.I_x;
@@ -116,9 +116,9 @@ function [x_dot, accel_ecef] = RocketDynamicModel(x, t, AeroModel, MotorModel, c
     ] * [x(inds.w_ib_x); x(inds.w_ib_y); x(inds.w_ib_z)];
 
     %% Position Dynamics
-    vx_dot = (D_ECEF(1) + L_ECEF(1) + T_ECEF(1) + F_c_ECEF(1)) / x(inds.mass) + gx_E;
-    vy_dot = (D_ECEF(2) + L_ECEF(2) + T_ECEF(2) + F_c_ECEF(2)) / x(inds.mass) + gy_E;
-    vz_dot = (D_ECEF(3) + L_ECEF(3) + T_ECEF(3) + F_c_ECEF(3)) / x(inds.mass) + gz_E;
+    vx_dot = (D_ECEF(1) + L_ECEF(1) + T_ECEF(1)) / x(inds.mass) + gx_E;
+    vy_dot = (D_ECEF(2) + L_ECEF(2) + T_ECEF(2)) / x(inds.mass) + gy_E;
+    vz_dot = (D_ECEF(3) + L_ECEF(3) + T_ECEF(3)) / x(inds.mass) + gz_E;
 
     %% State Derivative Vector
     x_dot = [

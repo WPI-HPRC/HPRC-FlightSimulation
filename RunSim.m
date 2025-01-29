@@ -39,16 +39,6 @@ currLLA = launchLLA;
 
 launch_ECEF_m = lla2ecef(launchLLA);
 
-%% Target Initialization
-targetLat = 42.33599546; % [deg] Latitude
-targetLon = -71.8098593; % [deg] Longitude
-targetAlt = 4752; % [m] Altitude MSL
-
-targetLLA = [targetLat, targetLon, targetAlt];
-currTargetLLA = targetLLA;
-
-target_ECEF = lla2ecef(targetLLA);
-
 %% Attitude Initialization
 roll_0 = deg2rad(0);
 pitch_0 = deg2rad(85);
@@ -94,12 +84,6 @@ tRecord(1,1) = t;
 
 xRecord = nan(length(x_0), numTimePts);
 xRecord(:,1) = x_t;
-
-xRecord_target = nan(length(x_0_target), numTimePts);
-xRecord_target(:,1) = x_t_target;
-
-xRecord_targetCircle = nan(length(x_0_target), numTimePts);
-xRecord_targetCircle(:,1) = x_t_targetCircle;
 
 tSpan = [0, time.tf];  % Start time and end time
 options = odeset('RelTol', 1e-6, 'AbsTol', 1e-9);  % Tolerances for ode45
@@ -153,18 +137,11 @@ end
 %% Plot Vehicle Trajectory
 lla = ecef2lla([xRecord(inds.px_ecef, :)', xRecord(inds.py_ecef, :)', xRecord(inds.pz_ecef, :)']);
 
-lla_target = ecef2lla([xRecord_target(1, :)', xRecord_target(2, :)', xRecord_target(3, :)']);
-
-position_target_ECEF = [xRecord_target(1, :)', xRecord_target(2, :)', xRecord_target(3, :)'];
-
 % Create a geoglobe
 uif = uifigure('Name', 'Vehicle Trajectory');
 g = geoglobe(uif);
 
 geoplot3(g, lla(:, 1), lla(:,2), lla(:,3),"y");
-hold(g,'on') % retains plot so that new plots can be added to the same plot
-geoplot3(g, lla_target(:, 1), lla_target(:,2), lla_target(:,3), "r");
-hold(g,'off')
 
 %% Euler Angles
 eulHist = quat2eul(xRecord(1:4, :)', 'ZYX');
